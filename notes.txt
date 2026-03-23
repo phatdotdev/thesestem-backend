@@ -1,0 +1,29 @@
+1. PostgreSQL
+
+docker run -d `
+  --name postgres-thesis `
+  -p 5432:5432 `
+  -e POSTGRES_DB=db `
+  -e POSTGRES_USER=postgres `
+  -e POSTGRES_PASSWORD=123456 `
+  postgres:16.11-alpine3.23
+
+2. Redis
+
+docker run -d `
+  --name redis-thesis `
+  -p 6379:6379 `
+  redis:7 `
+  redis-server --requirepass secret
+
+3. MinIO
+
+docker run -d `
+  --name minio-thesis `
+  -p 9000:9000 `
+  -p 9001:9001 `
+  -e MINIO_ROOT_USER=minioadmin `
+  -e MINIO_ROOT_PASSWORD=minioadmin `
+  -e MINIO_BUCKETS=thesis-management `
+  -v D:\assignments\thesis-management\upload:/data `
+  minio/minio server /data --console-address ":9001"
