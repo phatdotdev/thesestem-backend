@@ -57,17 +57,28 @@ public class Lecturer {
     String address;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "college_id")
+    @JoinColumn(
+            name = "college_id",
+            foreignKey = @ForeignKey(
+                    name = "fk_lecturer_college"
+            ))
     @OnDelete(action = OnDeleteAction.SET_NULL)
     College college;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "faculty_id")
+    @JoinColumn(
+            name = "faculty_id",
+            foreignKey = @ForeignKey(
+            name = "fk_lecturer_faculty"
+    ))
     @OnDelete(action = OnDeleteAction.SET_NULL)
     Faculty faculty;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id")
+    @JoinColumn(
+            name = "department_id", foreignKey = @ForeignKey(
+            name = "fk_lecturer_department"
+    ))
     @OnDelete(action = OnDeleteAction.SET_NULL)
     Department department;
 

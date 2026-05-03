@@ -1,7 +1,11 @@
 package com.dev.thesis_management.specifications;
 
+import com.dev.thesis_management.organization.entity.Department;
+import com.dev.thesis_management.organization.entity.Faculty;
 import com.dev.thesis_management.thesis.dto.council.CouncilSearchForm;
 import com.dev.thesis_management.thesis.entity.Council;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 
@@ -11,34 +15,79 @@ import java.util.UUID;
 
 public class CouncilSpecification {
 
-    public static Specification<Council> filter(CouncilSearchForm form, UUID semesterId) {
+    public static Specification<Council> filter(
+            CouncilSearchForm form,
+            UUID semesterId
+    ) {
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            if (form.name() != null && !form.name().isBlank()) {
+            // semester
+            predicates.add(
+                    cb.equal(root.get("semester").get("id"), semesterId)
+            );
+
+            // LEFT JOIN
+            Join<Council, Faculty> facultyJoin =
+                    root.join("faculty", JoinType.LEFT);
+
+            Join<Council, Department> departmentJoin =
+                    root.join("department", JoinType.LEFT);
+
+            Join<Department, Faculty> departmentFacultyJoin =
+                    departmentJoin.join("faculty", JoinType.LEFT);
+
+            // FILTER COLLEGE
+            if (form.collegeId() != null) {
+
+                Predicate councilCollege =
+                        cb.equal(root.get("college").get("id"), form.collegeId());
+
+                Predicate facultyCollege =
+                        cb.equal(facultyJoin.get("college").get("id"), form.collegeId());
+
+                Predicate departmentCollege =
+                        cb.equal(
+                                departmentFacultyJoin
+                                        .get("college")
+                                        .get("id"),
+                                form.collegeId()
+                        );
+
                 predicates.add(
-                        cb.like(
-                                cb.lower(root.get("name")),
-                                "%" + form.name().toLowerCase() + "%"
+                        cb.or(
+                                councilCollege,
+                                facultyCollege,
+                                departmentCollege
                         )
                 );
             }
 
-            if (form.code() != null && !form.code().isBlank()) {
+            // FILTER FACULTY
+            if (form.facultyId() != null) {
+
+                Predicate councilFaculty =
+                        cb.equal(facultyJoin.get("id"), form.facultyId());
+
+                Predicate departmentFaculty =
+                        cb.equal(
+                                departmentFacultyJoin.get("id"),
+                                form.facultyId()
+                        );
+
                 predicates.add(
-                        cb.like(
-                                cb.lower(root.get("code")),
-                                "%" + form.code().toLowerCase() + "%"
-                        )
+                        cb.or(councilFaculty, departmentFaculty)
                 );
             }
 
-            if (semesterId != null) {
+            // FILTER DEPARTMENT
+            if (form.departmentId() != null) {
+
                 predicates.add(
                         cb.equal(
-                                root.get("semester").get("id"),
-                                semesterId
+                                departmentJoin.get("id"),
+                                form.departmentId()
                         )
                 );
             }

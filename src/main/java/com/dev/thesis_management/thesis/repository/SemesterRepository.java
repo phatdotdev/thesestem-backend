@@ -12,6 +12,8 @@ import java.util.UUID;
 public interface SemesterRepository extends JpaRepository<Semester, UUID> {
 
     public List<Semester> findByOrganization(Organization organization);
+
+    List<Semester> findByOrganizationOrderByAcademicYearNameDescNameDesc(Organization organization);
     
     public Semester findByStatus(Semester.Status status);
 
@@ -22,4 +24,6 @@ public interface SemesterRepository extends JpaRepository<Semester, UUID> {
     List<Semester> findAllByIdInAndOrganization(List<UUID> mentorIds, Organization org);
 
     List<Semester> findAllByOrganizationAndAcademicYear(Organization org, AcademicYear year);
+
+    List<Semester> findAllByOrganizationAndAcademicYearOrderByNameDesc(Organization org, AcademicYear year);
 }

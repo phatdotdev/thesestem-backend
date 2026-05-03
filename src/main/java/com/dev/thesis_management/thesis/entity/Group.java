@@ -8,6 +8,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +44,7 @@ public class Group {
             joinColumns = @JoinColumn(name = "group_id"),
             inverseJoinColumns = @JoinColumn(name = "student_id")
     )
-    List<Student> students;
+    List<Student> students = new ArrayList<>();
 
     @OneToMany(
             mappedBy = "group",
@@ -51,7 +52,7 @@ public class Group {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    List<Topic> topics;
+    List<Topic> topics = new ArrayList<>();
 
     @OneToMany(
             mappedBy = "group",
@@ -59,7 +60,7 @@ public class Group {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    List<Assignment> assignments;
+    List<Assignment> assignments = new ArrayList<>();
 
     @OneToMany(
             mappedBy = "group",
@@ -67,7 +68,7 @@ public class Group {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    List<Meeting> meetings;
+    List<Meeting> meetings = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "root_folder_id")

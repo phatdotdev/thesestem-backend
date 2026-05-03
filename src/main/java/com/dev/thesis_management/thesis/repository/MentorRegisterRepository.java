@@ -12,4 +12,9 @@ public interface MentorRegisterRepository extends JpaRepository<MentorRegister, 
 
     List<MentorRegister> findAllByStudentIdAndSemesterId(UUID studentId, UUID semesterId);
     List<MentorRegister> findAllByMentorIdAndSemesterId(UUID mentorId, UUID semesterId);
+
+    long countDistinctStudentByMentorId(UUID id);
+    long countDistinctStudentByMentorIdAndSemesterId(UUID mentorId, UUID semesterId);
+    long countByMentorIdAndStatus(UUID mentorId, MentorRegister.Status status);
+    long countByMentorIdAndSemesterIdAndStatus(UUID mentorId, UUID semesterId, MentorRegister.Status status);
 }

@@ -11,12 +11,14 @@ import com.dev.thesis_management.organization.entity.Organization;
 import com.dev.thesis_management.user.entity.Lecturer;
 import com.dev.thesis_management.user.entity.Student;
 import com.dev.thesis_management.user.entity.User;
+import com.dev.thesis_management.user.enums.OrganizationType;
 import com.dev.thesis_management.user.enums.UserRole;
 import com.dev.thesis_management.user.repository.LecturerRepository;
 import com.dev.thesis_management.user.repository.OrganizationRepository;
 import com.dev.thesis_management.user.repository.StudentRepository;
 import com.dev.thesis_management.user.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -85,7 +87,8 @@ public class AuthService {
         }
         Claims claims = jwtTokenProvider.parseRefreshToken(refreshToken);
         UUID userId = UUID.fromString(claims.getSubject());
-        if(!refreshTokenRedisService.get(userId).equals(refreshToken)){
+        String storedRefreshToken = refreshTokenRedisService.get(userId);
+        if(storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)){
             throw new UnauthorizedException("Invalid refresh token");
         }
         User user = userRepository.findById(userId)
@@ -100,22 +103,35 @@ public class AuthService {
     }
 
     public void logout(UUID userId){
+        if (userId == null) {
+            throw new UnauthenticatedException("User not authenticated");
+        }
         refreshTokenRedisService.delete(userId);
     }
 
     public void register(RegisterRequest request){
+
+        if(userRepository.existsByUsername(request.getUsername())){
+            throw new BadRequestException("Email đã tồn tại");
+        }
+
         String otp = generateOtp();
+
         RegisterInfo info = RegisterInfo.builder()
                 .email(request.getUsername())
-                .password(request.getPassword())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .code(otp)
+                .verified(false)
                 .build();
+
         registerRedisService.save(info);
+
         String html = emailTemplateService.renderVerifyEmail(
                 request.getUsername(),
                 otp,
                 10
         );
+
         mailService.sendHtml(
                 request.getUsername(),
                 "Xác thực tài khoản",
@@ -123,11 +139,96 @@ public class AuthService {
         );
     }
 
-    public void verify(VerifyRequest request){
-        RegisterInfo info = registerRedisService.get(request.getEmail());
-        if(info.getCode().equals(request.getCode())){
-            throw new UnauthenticatedException("Invalid token");
+    public void resendOtp(String email){
+
+        RegisterInfo info = registerRedisService.get(email);
+
+        if(info == null){
+            throw new BadRequestException("Phiên đăng ký đã hết hạn");
         }
+
+        long ttl = registerRedisService.getTtl(email);
+
+        if(ttl > 60){
+            throw new BadRequestException("Vui lòng chờ 60s để gửi lại OTP");
+        }
+
+        String otp = generateOtp();
+
+        info.setCode(otp);
+
+        registerRedisService.save(info);
+
+        String html = emailTemplateService.renderVerifyEmail(
+                email,
+                otp,
+                10
+        );
+
+        mailService.sendHtml(
+                email,
+                "Xác thực tài khoản",
+                html
+        );
+    }
+
+    public void verify(VerifyRequest request){
+
+        RegisterInfo info = registerRedisService.get(request.getEmail());
+
+        if(info == null){
+            throw new UnauthenticatedException("OTP đã hết hạn");
+        }
+
+        if(!info.getCode().equals(request.getCode())){
+            throw new UnauthenticatedException("OTP không đúng");
+        }
+
+        info.setVerified(true);
+
+        registerRedisService.update(info);
+    }
+
+    @Transactional
+    public void createOrganization(CreateOrgRequest request){
+
+        RegisterInfo info = registerRedisService.get(request.getEmail());
+
+        if(info == null){
+            throw new BadRequestException("Phiên đăng ký đã hết hạn");
+        }
+
+        if(!info.isVerified()){
+            throw new UnauthorizedException("Email chưa xác thực");
+        }
+
+        if(organizationRepository.existsByCode(request.getOrgCode())){
+            throw new BadRequestException("Mã tổ chức đã tồn tại");
+        }
+
+        User user = User.builder()
+                .username(info.getEmail())
+                .password(info.getPassword())
+                .role(UserRole.MANAGER)
+                .build();
+
+        Organization org = Organization.builder()
+                .name(request.getOrgName())
+                .code(request.getOrgCode())
+                .email(request.getOrgEmail())
+                .phone(request.getOrgPhone())
+                .type(OrganizationType.valueOf(request.getOrgType()))
+                .manager(user)
+                .address(request.getOrgAddress())
+                .build();
+
+        user.setOrganization(org);
+
+        userRepository.save(user);
+
+        organizationRepository.save(org);
+
+        registerRedisService.delete(request.getEmail());
     }
 
     public AuthResponse loginToOrg(String code, LoginRequest request) {
@@ -154,6 +255,10 @@ public class AuthService {
             Organization organization,
             String username
     ) {
+
+        if(organization.getManager().getUsername().equals(username)){
+            return Optional.of(organization.getManager());
+        }
 
         Optional<Student> student = studentRepository
                 .findByOrganizationAndStudentCode(organization, username);

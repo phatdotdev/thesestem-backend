@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,16 +27,52 @@ public class DefenseController {
 
     DefenseService defenseService;
 
-    @GetMapping("/current")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<DefenseResponse>>> searchDefenses(
+            DefenseSearchForm form,
+            Pageable pageable,
+            Authentication authentication
+    ){
+        return ok(defenseService.searchDefense(form, pageable, parseUUID(authentication.getName())));
+    }
+
+    @GetMapping
     public ResponseEntity<ApiResponse<List<DefenseResponse>>> listDefenses(
+            DefenseSearchForm form,
+            Authentication authentication
+    ){
+        return ok(defenseService.listDefense(form, parseUUID(authentication.getName())));
+    }
+
+    @GetMapping("/semester/{id}")
+    public ResponseEntity<ApiResponse<List<DefenseResponse>>> listDefensesBySemester(
+            @PathVariable UUID id,
+            DefenseSearchForm form,
+            Authentication authentication
+    ){
+        return ok(defenseService.listDefenseBySemester(id, form, parseUUID(authentication.getName())));
+    }
+
+    @GetMapping("/current")
+    public ResponseEntity<ApiResponse<List<DefenseResponse>>> listCurrentDefenses(
             DefenseSearchForm form,
             Authentication authentication
     ){
         return ok(defenseService.listCurrentDefense(form, parseUUID(authentication.getName())));
     }
 
+    @GetMapping("/semester/{id}/search")
+    public ResponseEntity<ApiResponse<Page<DefenseResponse>>> searchDefensesBySemester(
+            @PathVariable UUID id,
+            DefenseSearchForm form,
+            Pageable pageable,
+            Authentication authentication
+    ){
+        return ok(defenseService.searchDefenseBySemester(id, form, pageable, parseUUID(authentication.getName())));
+    }
+
     @GetMapping("/current/search")
-    public ResponseEntity<ApiResponse<Page<DefenseResponse>>> searchDefenses(
+    public ResponseEntity<ApiResponse<Page<DefenseResponse>>> searchCurrentDefenses(
             DefenseSearchForm form,
             Pageable pageable,
             Authentication authentication
@@ -109,6 +146,23 @@ public class DefenseController {
             Authentication authentication
     ){
         return ok(defenseService.scoreThesis(id, memberId, request, parseUUID(authentication.getName())));
+    }
+
+    @PostMapping("/{id}/minutes-file")
+    public ResponseEntity<ApiResponse<DefenseResponse>> uploadMinutesFile(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        return ok(defenseService.uploadMinutesFile(id, file, parseUUID(authentication.getName())));
+    }
+
+    @DeleteMapping("/{id}/minutes-file")
+    public ResponseEntity<ApiResponse<DefenseResponse>> deleteMinutesFile(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return ok(defenseService.deleteMinutesFile(id, parseUUID(authentication.getName())));
     }
 
 }

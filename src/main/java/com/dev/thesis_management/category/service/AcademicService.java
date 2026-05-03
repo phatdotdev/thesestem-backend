@@ -148,7 +148,7 @@ public class AcademicService {
         }
         AcademicYear year = academicYearRepository.findByIdAndOrganization(id, organization)
                 .orElseThrow(() -> new BadRequestException("Year not found"));
-        return semesterRepository.findAllByOrganizationAndAcademicYear(organization, year)
+        return semesterRepository.findAllByOrganizationAndAcademicYearOrderByNameDesc(organization, year)
                 .stream().map(SemesterMapper::semesterToResponse).toList();
     }
 }

@@ -35,14 +35,26 @@ public class SecurityConfig {
     SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher(
-                        "/auth/**",
+                        "/auth/login",
+                        "/auth/refresh",
+                        "/auth/register",
+                        "/auth/verify",
+                        "/auth/resend",
+                        "/auth/create-org",
+                        "/auth/*/login",
                         "/oauth2/**",
                         "/login/oauth2/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/error",
+                        "/orgs/search",
                         "/orgs/search/*",
-                        "/orgs/*/login"
+                        "/orgs/*/login",
+                        "/theses/public/search",
+                        "/theses/public/*",
+                        "/files/*/download",
+                        "/ws/**",
+                        "/ws"
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/oauth2/authorization/google")

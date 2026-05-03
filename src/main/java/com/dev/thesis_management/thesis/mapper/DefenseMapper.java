@@ -1,5 +1,6 @@
 package com.dev.thesis_management.thesis.mapper;
 
+import com.dev.thesis_management.file_asset.mapper.FileMapper;
 import com.dev.thesis_management.thesis.dto.defense.DefenseResponse;
 import com.dev.thesis_management.thesis.dto.defense.DefenseScoreResponse;
 import com.dev.thesis_management.thesis.entity.DefenseScore;
@@ -23,6 +24,7 @@ public class DefenseMapper {
                 )
                 .defenseTime(defense.getDefenseTime())
                 .location(defense.getLocation())
+                .minutesFile(FileMapper.toFileResponse(defense.getMinutesFile()))
                 .build();
     }
 

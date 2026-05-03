@@ -30,10 +30,6 @@ public class Meeting {
     @Column(name = "end_at")
     LocalDateTime endAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    Status status;
-
     String url;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,9 +47,4 @@ public class Meeting {
 
     @PreUpdate
     public void preUpdate() { updatedAt = LocalDateTime.now(); }
-
-    public enum Status {
-        SCHEDULED,
-        COMPLETED,
-        CANCELED }
 }

@@ -2,6 +2,7 @@ package com.dev.thesis_management.organization.mapper;
 
 import com.dev.thesis_management.organization.dto.AddDepartmentRequest;
 import com.dev.thesis_management.organization.dto.DepartmentResponse;
+import com.dev.thesis_management.organization.dto.UnitResponse;
 import com.dev.thesis_management.organization.dto.UpdateDepartmentRequest;
 import com.dev.thesis_management.organization.entity.Department;
 
@@ -27,5 +28,19 @@ public class DepartmentMapper {
         department.setCode(request.getCode());
         department.setName(request.getName());
         department.setDescription(request.getDescription());
+    }
+
+    public static DepartmentResponse departmentToResponseWithoutChildren(Department department) {
+        return DepartmentResponse.builder()
+                .id(department.getId())
+                .code(department.getCode())
+                .name(department.getName())
+                .description(department.getDescription())
+                .faculty(department.getFaculty() != null ? UnitResponse.builder()
+                        .id(department.getFaculty().getId())
+                        .code(department.getFaculty().getCode())
+                        .name(department.getFaculty().getName())
+                        .build() : null)
+                .build();
     }
 }

@@ -4,6 +4,7 @@ import com.dev.thesis_management.common.response.ApiResponse;
 import com.dev.thesis_management.organization.dto.AddProgramRequest;
 import com.dev.thesis_management.organization.dto.ProgramResponse;
 import com.dev.thesis_management.organization.dto.UpdateProgramRequest;
+import com.dev.thesis_management.organization.dto.organization.ProgramSearchForm;
 import com.dev.thesis_management.organization.service.ProgramService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +30,10 @@ public class ProgramController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProgramResponse>>> getPrograms(
+            @ModelAttribute ProgramSearchForm form,
             Authentication authentication
     ){
-        return ok(programService.getPrograms( parseUUID(authentication.getName())));
+        return ok(programService.getPrograms(form, parseUUID(authentication.getName())));
     }
 
     @PostMapping

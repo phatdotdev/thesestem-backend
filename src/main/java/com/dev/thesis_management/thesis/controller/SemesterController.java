@@ -1,6 +1,8 @@
 package com.dev.thesis_management.thesis.controller;
 
 import com.dev.thesis_management.common.response.ApiResponse;
+import com.dev.thesis_management.thesis.dto.milestone.MilestoneRequest;
+import com.dev.thesis_management.thesis.dto.milestone.MilestoneResponse;
 import com.dev.thesis_management.user.dto.MentorSearchForm;
 import com.dev.thesis_management.thesis.dto.SemesterResponse;
 import com.dev.thesis_management.user.dto.StudentSearchForm;
@@ -91,6 +93,16 @@ public class SemesterController {
         return ok(semesterService.searchStudentsInSemester(form, pageable, parseUUID(authentication.getName())));
     }
 
+    @GetMapping("/{id}/students/search")
+    public ResponseEntity<ApiResponse<Page<StudentResponse>>> searchSemesterStudents(
+            StudentSearchForm form,
+            @PathVariable UUID id,
+            @PageableDefault(page = 0, size = 10) Pageable pageable,
+            Authentication authentication
+    ) {
+        return ok(semesterService.searchStudentsBySemester(form, id, pageable, parseUUID(authentication.getName())));
+    }
+
     @PutMapping("/current/students/{id}")
     public ResponseEntity<ApiResponse> addStudentToCurrentSemester(
             Authentication authentication,
@@ -114,7 +126,7 @@ public class SemesterController {
             @PathVariable UUID id,
             Authentication authentication
     ){
-        return ok(semesterService.checkStudentInCurrentSemester(id, parseUUID(authentication.getName())));
+        return ok(semesterService.checkStudentInSemester(id, parseUUID(authentication.getName())));
     }
 
     @GetMapping("/current/students/me")
@@ -141,6 +153,16 @@ public class SemesterController {
             Authentication authentication
     ) {
         return ok(semesterService.searchMentorsInSemester(form, pageable, parseUUID(authentication.getName())));
+    }
+
+    @GetMapping("/{id}/mentors/search")
+    public ResponseEntity<ApiResponse<Page<LecturerResponse>>> searchSemesterMentors(
+            MentorSearchForm form,
+            @PathVariable UUID id,
+            @PageableDefault(page = 0, size = 10) Pageable pageable,
+            Authentication authentication
+    ) {
+        return ok(semesterService.searchMentorsBySemester(form, id, pageable, parseUUID(authentication.getName())));
     }
 
     @PutMapping("/current/mentors")
@@ -174,6 +196,73 @@ public class SemesterController {
             Authentication authentication
     ){
         return ok(semesterService.checkMentorInCurrentSemester(parseUUID(authentication.getName())));
+    }
+
+    @PostMapping("/current/milestones")
+    public ResponseEntity<ApiResponse> createMilestone(
+            @RequestBody MilestoneRequest request,
+            Authentication auth
+    ){
+        semesterService.createMilestone(
+                request,
+                parseUUID(auth.getName())
+        );
+
+        return noContent();
+    }
+
+    @PutMapping("/current/milestones/{milestoneId}")
+    public ResponseEntity<ApiResponse> updateMilestone(
+            @PathVariable UUID milestoneId,
+            @RequestBody MilestoneRequest request,
+            Authentication auth
+    ){
+        semesterService.updateMilestone(
+                milestoneId,
+                request,
+                parseUUID(auth.getName())
+        );
+
+        return noContent();
+    }
+
+    @DeleteMapping("/{id}/milestones/{milestoneId}")
+    public ResponseEntity<ApiResponse> deleteMilestone(
+            @PathVariable UUID id,
+            @PathVariable UUID milestoneId,
+            Authentication auth
+    ){
+        semesterService.deleteMilestone(
+                id,
+                milestoneId,
+                parseUUID(auth.getName())
+        );
+
+        return noContent();
+    }
+
+    @GetMapping("/{id}/milestones")
+    public ResponseEntity<ApiResponse<List<MilestoneResponse>>> getMilestones(
+            @PathVariable UUID id,
+            Authentication auth
+    ){
+        return ok(
+                semesterService.getMilestones(
+                        id,
+                        parseUUID(auth.getName())
+                )
+        );
+    }
+
+    @GetMapping("/current/milestones")
+    public ResponseEntity<ApiResponse<List<MilestoneResponse>>> getCurrentMilestones(
+            Authentication auth
+    ){
+        return ok(
+                semesterService.getCurrentMilestones(
+                        parseUUID(auth.getName())
+                )
+        );
     }
 }
 

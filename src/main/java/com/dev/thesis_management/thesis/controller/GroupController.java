@@ -1,6 +1,8 @@
 package com.dev.thesis_management.thesis.controller;
 
 import com.dev.thesis_management.common.response.ApiResponse;
+import com.dev.thesis_management.file_asset.dto.FolderRequest;
+import com.dev.thesis_management.file_asset.dto.FolderResponse;
 import com.dev.thesis_management.thesis.dto.CreateGroupRequest;
 import com.dev.thesis_management.thesis.dto.GroupResponse;
 import com.dev.thesis_management.thesis.dto.UpdateGroupRequest;
@@ -16,6 +18,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -148,6 +151,47 @@ public class GroupController {
         return noContent();
     }
 
+    @GetMapping("/{id}/assignments/{assignmentId}")
+    public ResponseEntity<ApiResponse<AssignmentResponse>> getAssignmentById(
+            @PathVariable UUID id,
+            @PathVariable UUID assignmentId,
+            Authentication authentication
+    ) {
+        return ok(groupService.getAssignmentById(id, assignmentId, parseUUID(authentication.getName())));
+    }
+
+    @PostMapping("/{id}/assignments/{assignmentId}/submissions")
+    public ResponseEntity<ApiResponse> submitAssignment(
+            @PathVariable UUID id,
+            @PathVariable UUID assignmentId,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication authentication
+    ) {
+        UUID userId = parseUUID(authentication.getName());
+        groupService.submitAssignment(id, assignmentId, files, userId);
+        return noContent();
+    }
+
+    @GetMapping("/{id}/assignments/{assignmentId}/submissions")
+    public ResponseEntity<ApiResponse<List<AssignmentSubmissionResponse>>> getAssignmentSubmissions(
+            @PathVariable UUID id,
+            @PathVariable UUID assignmentId,
+            Authentication authentication
+    ) {
+        UUID userId = parseUUID(authentication.getName());
+        return ok(groupService.getAssignmentSubmissions(id, assignmentId, userId));
+    }
+
+    @GetMapping("/{id}/assignments/{assignmentId}/submissions/student")
+    public ResponseEntity<ApiResponse<List<AssignmentSubmissionResponse>>> getStudentAssignmentSubmissions(
+            @PathVariable UUID id,
+            @PathVariable UUID assignmentId,
+            Authentication authentication
+    ) {
+        UUID userId = parseUUID(authentication.getName());
+        return ok(groupService.getStudentAssignmentSubmissions(id, assignmentId, userId));
+    }
+
     /* =========================================================
                         MEETINGS
     ========================================================= */
@@ -194,6 +238,89 @@ public class GroupController {
     /* =========================================================
                         DOCUMENTS
     ========================================================= */
+
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<ApiResponse<FolderResponse>> getGroupDocuments (
+            @PathVariable UUID id,
+            Authentication authentication
+    ){
+        return ok(groupService.getGroupDocuments(id, parseUUID(authentication.getName())));
+    }
+
+    @PostMapping(
+            value = "/{id}/files/{folderId}",
+            consumes = "multipart/form-data"
+    )
+    public ResponseEntity<ApiResponse> uploadFile(
+            @PathVariable UUID id,
+            @PathVariable UUID folderId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ){
+
+        groupService.addFileToGroup(
+                id,
+                folderId,
+                file,
+                parseUUID(authentication.getName())
+        );
+
+        return noContent();
+    }
+
+    @DeleteMapping("/{id}/files/{folderId}/{fileId}")
+    public ResponseEntity<ApiResponse> deleteFile(
+            @PathVariable UUID id,
+            @PathVariable UUID folderId,
+            @PathVariable UUID fileId,
+            Authentication authentication
+    ){
+
+        groupService.removeFileFromGroup(
+                id,
+                folderId,
+                fileId,
+                parseUUID(authentication.getName())
+        );
+
+        return noContent();
+    }
+
+    /* ================= FOLDER ================= */
+
+    @PostMapping("/{id}/folders/{parentId}")
+    public ResponseEntity<ApiResponse> createFolder(
+            @PathVariable UUID id,
+            @PathVariable UUID parentId,
+            @RequestBody FolderRequest request,
+            Authentication authentication
+    ){
+
+        groupService.addFolderToGroup(
+                id,
+                parentId,
+                request.name(),
+                parseUUID(authentication.getName())
+        );
+
+        return noContent();
+    }
+
+    @DeleteMapping("/{id}/folders/{folderId}")
+    public ResponseEntity<ApiResponse> deleteFolder(
+            @PathVariable UUID id,
+            @PathVariable UUID folderId,
+            Authentication authentication
+    ){
+
+        groupService.removeFolderFromGroup(
+                id,
+                folderId,
+                parseUUID(authentication.getName())
+        );
+
+        return noContent();
+    }
 
     /* =========================================================
                             STUDENTS
@@ -271,6 +398,18 @@ public class GroupController {
     ) {
         UUID userId = parseUUID(authentication.getName());
         groupService.assignStudentToTopic(id, topicId, studentId, userId);
+        return noContent();
+    }
+
+    @PostMapping("/{id}/topics/{topicId}/{studentId}/exchange")
+    public ResponseEntity<ApiResponse> exchangeTopicStudent(
+            @PathVariable UUID id,
+            @PathVariable UUID topicId,
+            @PathVariable UUID studentId,
+            Authentication authentication
+    ) {
+        UUID userId = parseUUID(authentication.getName());
+        groupService.exchangeTopicStudent(id, topicId, studentId, userId);
         return noContent();
     }
 

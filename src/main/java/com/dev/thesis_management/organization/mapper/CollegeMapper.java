@@ -2,8 +2,10 @@ package com.dev.thesis_management.organization.mapper;
 
 import com.dev.thesis_management.organization.dto.AddCollegeRequest;
 import com.dev.thesis_management.organization.dto.CollegeResponse;
+import com.dev.thesis_management.organization.dto.FacultyResponse;
 import com.dev.thesis_management.organization.dto.UpdateCollegeRequest;
 import com.dev.thesis_management.organization.entity.College;
+import com.dev.thesis_management.organization.entity.Faculty;
 
 public class CollegeMapper {
     public static College addCollegeRequestToCollege(AddCollegeRequest request){
@@ -28,9 +30,19 @@ public class CollegeMapper {
                 .build();
     }
 
+    public static CollegeResponse collegeToResponseWithoutChildren(College college){
+        return CollegeResponse.builder()
+                .id(college.getId())
+                .code(college.getCode())
+                .name(college.getName())
+                .description(college.getDescription())
+                .build();
+    }
+
     public static void updateCollegeFromRequest(College college, UpdateCollegeRequest request){
         college.setCode(request.getCode());
         college.setName(request.getName());
         college.setDescription(request.getDescription());
     }
+
 }

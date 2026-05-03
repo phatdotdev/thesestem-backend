@@ -1,8 +1,16 @@
 package com.dev.thesis_management.thesis.service;
 
+import com.dev.thesis_management.communication.entity.Notification;
+import com.dev.thesis_management.communication.service.NotificationService;
 import com.dev.thesis_management.exception.BadRequestException;
 import com.dev.thesis_management.exception.UnauthorizedException;
+import com.dev.thesis_management.file_asset.dto.FolderResponse;
+import com.dev.thesis_management.file_asset.entity.FileAsset;
 import com.dev.thesis_management.file_asset.entity.Folder;
+import com.dev.thesis_management.file_asset.mapper.FileMapper;
+import com.dev.thesis_management.file_asset.repository.FolderRepository;
+import com.dev.thesis_management.file_asset.service.FileService;
+import com.dev.thesis_management.file_asset.service.FolderService;
 import com.dev.thesis_management.organization.entity.Organization;
 import com.dev.thesis_management.organization.service.OrgService;
 import com.dev.thesis_management.thesis.dto.CreateGroupRequest;
@@ -26,6 +34,7 @@ import lombok.experimental.FieldDefaults;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +54,11 @@ public class GroupService {
     StudentRepository studentRepository;
     ThesisRepository thesisRepository;
     MeetingRepository meetingRepository;
+    FolderRepository folderRepository;
+    FileService fileService;
+    FolderService folderService;
+    NotificationService notificationService;
+
     OrgService orgService;
 
     /* =========================================================
@@ -233,6 +247,18 @@ public class GroupService {
 
         assignmentRepository.save(assignment);
 
+        String content = "Giảng viên đã thêm bài tập mới: " + assignment.getName();
+        group.getStudents().forEach(student -> {
+            if (!student.getUser().getId().equals(userId)) {
+                notificationService.notifyUser(
+                        student.getUser(),
+                        "Bài tập mới",
+                        content,
+                        Notification.Type.MENTOR_ASSIGN_TASK
+                );
+            }
+        });
+
         return AssignmentMapper.assignmentToResponse(assignment);
     }
 
@@ -279,6 +305,114 @@ public class GroupService {
         assignmentRepository.delete(assignment);
     }
 
+    public AssignmentResponse getAssignmentById(UUID groupId, UUID assignmentId, UUID userId) {
+
+        Group group = findGroupById(groupId);
+
+        checkGroupMember(group, userId);
+
+        Assignment assignment = assignmentRepository
+                .findByIdAndGroupId(assignmentId, groupId)
+                .orElseThrow(() ->
+                        new BadRequestException("Assignment not found in this group"));
+
+        return AssignmentMapper.assignmentToResponse(assignment);
+    }
+
+    @Transactional
+    public void submitAssignment(UUID groupId,
+                                 UUID assignmentId,
+                                 List<MultipartFile> files,
+                                 UUID userId) {
+
+        Group group = findGroupById(groupId);
+
+        checkGroupMember(group, userId);
+
+        Assignment assignment = assignmentRepository
+                .findByIdAndGroupId(assignmentId, groupId)
+                .orElseThrow(() ->
+                        new BadRequestException("Assignment not found in this group"));
+
+        Student student = group.getStudents()
+                .stream()
+                .filter(std -> std.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Student not in this group"));
+
+        List<FileAsset> fileAssets = files.stream()
+                .map(file -> fileService.upload(file, userId))
+                .toList();
+
+        AssignmentSubmission submission = AssignmentSubmission.builder()
+                .assignment(assignment)
+                .files(fileAssets)
+                .student(student)
+                .build();
+
+        assignment.getSubmissions().add(submission);
+
+        assignmentRepository.save(assignment);
+
+        if (!group.getMentor().getUser().getId().equals(userId)) {
+            String studentName = student.getFullName() != null ? student.getFullName() : student.getStudentCode();
+            notificationService.notifyUser(
+                    group.getMentor().getUser(),
+                    "Nộp bài tập",
+                    studentName + " đã nộp bài tập \"" + assignment.getName() + "\".",
+                    Notification.Type.STUDENT_SUBMIT_ASSIGNMENT
+            );
+        }
+    }
+
+    public List<AssignmentSubmissionResponse> getAssignmentSubmissions(UUID groupId,
+                                                                     UUID assignmentId,
+                                                                     UUID userId) {
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        Assignment assignment = assignmentRepository
+                .findByIdAndGroupId(assignmentId, groupId)
+                .orElseThrow(() ->
+                        new BadRequestException("Assignment not found in this group"));
+
+        return assignment.getSubmissions() != null
+                ? assignment.getSubmissions()
+                .stream()
+                .map(AssignmentMapper::assignmentSubmissionResponse)
+                .toList()
+                : List.of();
+    }
+
+    public List<AssignmentSubmissionResponse> getStudentAssignmentSubmissions(UUID groupId,
+                                                                     UUID assignmentId,
+                                                                     UUID userId) {
+
+        Group group = findGroupById(groupId);
+
+        checkGroupMember(group, userId);
+
+        Assignment assignment = assignmentRepository
+                .findByIdAndGroupId(assignmentId, groupId)
+                .orElseThrow(() ->
+                        new BadRequestException("Assignment not found in this group"));
+
+        Student student = group.getStudents()
+                .stream()
+                .filter(std -> std.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Student not in this group"));
+
+        return assignment.getSubmissions() != null
+                ? assignment.getSubmissions()
+                .stream()
+                .filter(submission -> submission.getStudent().getId().equals(student.getId()))
+                .map(AssignmentMapper::assignmentSubmissionResponse)
+                .toList()
+                : List.of();
+    }
+
     /* =========================================================
                         MEETINGS
     ========================================================= */
@@ -299,10 +433,11 @@ public class GroupService {
         Meeting meeting = Meeting.builder()
                 .title(request.title())
                 .description(request.description())
-                .startAt(request.start())
-                .endAt(request.end())
+                .startAt(request.startAt())
+                .endAt(request.endAt())
                 .group(group)
                 .build();
+        meetingRepository.save(meeting);
         meeting.setUrl("https://meet.jit.si/" + meeting.getId().toString());
        return  MeetingMapper.meetingToResponse(meetingRepository.save(meeting));
     }
@@ -315,8 +450,8 @@ public class GroupService {
 
         meeting.setTitle(request.title());
         meeting.setDescription(request.description());
-        meeting.setStartAt(request.start());
-        meeting.setEndAt(request.end());
+        meeting.setStartAt(request.startAt());
+        meeting.setEndAt(request.endAt());
 
         Meeting updated = meetingRepository.save(meeting);
         return MeetingMapper.meetingToResponse(updated);
@@ -331,6 +466,102 @@ public class GroupService {
         meetingRepository.delete(meeting);
     }
 
+    /* =========================================================
+                        DOCUMENTS
+    ========================================================= */
+
+    public FolderResponse getGroupDocuments(UUID groupId, UUID userId) {
+        Group group = findGroupById(groupId);
+
+        checkGroupMember(group, userId);
+
+        return FileMapper.toFolderResponse(group.getRootFolder());
+    }
+
+    @Transactional
+    public GroupResponse addFileToGroup(
+            UUID groupId,
+            UUID folderId,
+            MultipartFile file,
+            UUID userId
+    ){
+
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        if(isFolderNotInGroup(group, folderId)){
+            throw new BadRequestException("Folder not belong to group");
+        }
+
+        FileAsset fileAsset = fileService.upload(file, userId);
+
+        folderService.addFile(folderId, fileAsset);
+
+        return GroupMapper.toGroupResponse(group);
+    }
+
+    @Transactional
+    public GroupResponse removeFileFromGroup(
+            UUID groupId,
+            UUID folderId,
+            UUID fileId,
+            UUID userId
+    ){
+
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        if(isFolderNotInGroup(group, folderId)){
+            throw new BadRequestException("Folder not belong to group");
+        }
+
+        fileService.delete(fileId, userId);
+
+        return GroupMapper.toGroupResponse(group);
+    }
+
+    @Transactional
+    public GroupResponse addFolderToGroup(
+            UUID groupId,
+            UUID parentFolderId,
+            String name,
+            UUID userId
+    ){
+
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        if(isFolderNotInGroup(group, parentFolderId)){
+            throw new BadRequestException("Folder not belong to group");
+        }
+
+        folderService.createSubFolder(parentFolderId, name);
+
+        return GroupMapper.toGroupResponse(group);
+    }
+
+    @Transactional
+    public GroupResponse removeFolderFromGroup(
+            UUID groupId,
+            UUID removeFolderId,
+            UUID userId
+    ){
+
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        if(isFolderNotInGroup(group, removeFolderId)){
+            throw new BadRequestException("Folder not belong to group");
+        }
+
+        folderService.deleteFolder(removeFolderId);
+
+        return GroupMapper.toGroupResponse(group);
+    }
 
     /* =========================================================
                         STUDENT
@@ -517,6 +748,41 @@ public class GroupService {
         topicRepository.save(topic);
     }
 
+    @Transactional
+    public void exchangeTopicStudent(UUID groupId, UUID topicId, UUID studentId, UUID userId) {
+        Group group = findGroupById(groupId);
+
+        checkGroupPermission(group, userId);
+
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new BadRequestException("Topic not found"));
+
+        if (!topic.getGroup().getId().equals(groupId)) {
+            throw new BadRequestException("Topic does not belong to this group");
+        }
+
+        Student student = group.getStudents()
+                .stream()
+                .filter(std -> std.getId().equals(studentId))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Student not in group"));
+
+        Thesis thesis = thesisRepository.findByTopic_Group_IdAndStudent_Id(groupId, studentId)
+                .orElseThrow(() -> new BadRequestException("Student has not been assigned to any topic in this group"));
+
+        System.out.println("Thesis found: " + thesis.getId());
+        thesisRepository.delete(thesis);
+        Thesis newThesis = Thesis.builder()
+                .topic(topic)
+                .student(student)
+                .title(topic.getTitle())
+                .description(topic.getDescription())
+                .status(Thesis.Status.PROPOSAL)
+                .build();
+
+        thesisRepository.save(newThesis);
+    }
+
     /* =========================================================
                         THESES
     ========================================================= */
@@ -584,5 +850,43 @@ public class GroupService {
 
             throw new UnauthorizedException("You do not have permission");
         }
+    }
+
+    public void checkGroupMember(Group group, UUID userId) {
+
+        boolean isMember = group.getStudents()
+                .stream()
+                .anyMatch(member ->
+                        member.getUser()
+                                .getId()
+                                .equals(userId)
+                )
+                || group.getMentor()
+                .getUser()
+                .getId()
+                .equals(userId);
+
+        if (!isMember) {
+            throw new UnauthorizedException("User is not in this group");
+        }
+    }
+
+    private boolean isFolderNotInGroup(Group group, UUID folderId){
+
+        Folder folder = folderRepository.findById(folderId)
+                .orElseThrow(() -> new BadRequestException("Folder not found"));
+
+        Folder root = group.getRootFolder();
+
+        while(folder != null){
+
+            if(folder.getId().equals(root.getId())){
+                return false;
+            }
+
+            folder = folder.getParent();
+        }
+
+        return true;
     }
 }

@@ -7,6 +7,8 @@ import com.dev.thesis_management.thesis.entity.Group;
 import com.dev.thesis_management.user.mapper.LecturerMapper;
 import com.dev.thesis_management.user.mapper.StudentMapper;
 
+import java.util.List;
+
 public class GroupMapper {
     public static Group createGroupRequestToGroup(CreateGroupRequest request){
         return Group.builder()
@@ -24,7 +26,13 @@ public class GroupMapper {
         return GroupResponse.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .students(group.getStudents().stream().map(StudentMapper::studentToResponse).toList())
+                .students(
+                        group.getStudents() == null
+                                ? List.of()
+                                : group.getStudents().stream()
+                                .map(StudentMapper::studentToResponse)
+                                .toList()
+                )
                 .description(group.getDescription())
                 .build();
     }
@@ -33,9 +41,20 @@ public class GroupMapper {
         return GroupResponse.builder()
                 .id(group.getId())
                 .name(group.getName())
-                .students(group.getStudents().stream().map(StudentMapper::studentToResponse).toList())
+                .students(
+                        group.getStudents() == null
+                                ? List.of()
+                                : group.getStudents().stream()
+                                .map(StudentMapper::studentToResponse)
+                                .toList()
+                )
                 .description(group.getDescription())
-                .mentor(LecturerMapper.lecturerToResponse(group.getMentor()))
+                .mentor(
+                        group.getMentor() == null
+                                ? null
+                                : LecturerMapper.lecturerToResponse(group.getMentor())
+                )
                 .build();
     }
+
 }

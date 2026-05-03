@@ -2,7 +2,13 @@ package com.dev.thesis_management.thesis.service;
 
 import com.dev.thesis_management.exception.BadRequestException;
 import com.dev.thesis_management.exception.UnauthorizedException;
+import com.dev.thesis_management.organization.entity.College;
+import com.dev.thesis_management.organization.entity.Department;
+import com.dev.thesis_management.organization.entity.Faculty;
 import com.dev.thesis_management.organization.entity.Organization;
+import com.dev.thesis_management.organization.repository.CollegeRepository;
+import com.dev.thesis_management.organization.repository.DepartmentRepository;
+import com.dev.thesis_management.organization.repository.FacultyRepository;
 import com.dev.thesis_management.organization.service.OrgService;
 import com.dev.thesis_management.specifications.CouncilSpecification;
 import com.dev.thesis_management.thesis.dto.council.CouncilMemberRequest;
@@ -44,6 +50,10 @@ public class CouncilService {
     CouncilRoleRepository councilRoleRepository;
     CouncilRepository councilRepository;
 
+    CollegeRepository collegeRepository;
+    FacultyRepository facultyRepository;
+    DepartmentRepository departmentRepository;
+
     OrgService orgService;
     LecturerRepository lecturerRepository;
     UserRepository userRepository;
@@ -61,6 +71,16 @@ public class CouncilService {
         Organization org = getManagerOrganization(userId);
         Semester semester = getCurrentSemester(org);
 
+        Specification<Council> spec =
+                CouncilSpecification.filter(form, semester.getId());
+
+        return councilRepository.findAll(spec, pageable)
+                .map(CouncilMapper::toCouncilResponse);
+    }
+
+    public Page<CouncilResponse> searchCouncilsBySemester(CouncilSearchForm form, UUID id, Pageable pageable, UUID userId) {
+        Organization org = getManagerOrganization(userId);
+        Semester semester = getSemester(id, org);
         Specification<Council> spec =
                 CouncilSpecification.filter(form, semester.getId());
 
@@ -140,10 +160,30 @@ public class CouncilService {
         Organization org = getManagerOrganization(userId);
         Semester semester = getCurrentSemester(org);
 
+        College college = null;
+        Faculty faculty = null;
+        Department department = null;
+
+        if(request.collegeId() != null){
+            college = collegeRepository.findById(request.collegeId())
+                    .orElse(null);
+        }
+        if(request.facultyId() != null) {
+            faculty = facultyRepository.findById(request.facultyId())
+                    .orElse(null);
+        }
+        if(request.departmentId() != null) {
+            department = departmentRepository.findById(request.departmentId())
+                    .orElse(null);
+        }
+
         Council council = Council.builder()
                 .name(request.name())
                 .code(request.code())
                 .semester(semester)
+                .college(college)
+                .faculty(faculty)
+                .department(department)
                 .build();
 
         for (CouncilMemberRequest member : request.members()) {
@@ -178,6 +218,23 @@ public class CouncilService {
 
         council.setName(request.name());
         council.setCode(request.code());
+
+        College college = null;
+        Faculty faculty = null;
+        Department department = null;
+
+        if(request.collegeId() != null){
+            college = collegeRepository.findById(request.collegeId())
+                    .orElse(null);
+        }
+        if(request.facultyId() != null) {
+            faculty = facultyRepository.findById(request.facultyId())
+                    .orElse(null);
+        }
+        if(request.departmentId() != null) {
+            department = departmentRepository.findById(request.departmentId())
+                    .orElse(null);
+        }
 
         Map<UUID, CouncilMember> currentMembers =
                 council.getMembers()
@@ -229,6 +286,9 @@ public class CouncilService {
 
         council.getMembers().clear();
         council.getMembers().addAll(updatedMembers);
+        council.setCollege(college);
+        council.setFaculty(faculty);
+        council.setDepartment(department);
 
         councilRepository.save(council);
 
@@ -358,6 +418,18 @@ public class CouncilService {
                 .findByOrganizationAndStatus(
                         organization,
                         Semester.Status.ACTIVE
+                )
+                .orElseThrow(() ->
+                        new BadRequestException(
+                                "Semester not found"
+                        ));
+    }
+
+    public Semester getSemester(UUID id, Organization organization){
+        return semesterRepository
+                .findByIdAndOrganization(
+                        id,
+                        organization
                 )
                 .orElseThrow(() ->
                         new BadRequestException(

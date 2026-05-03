@@ -43,8 +43,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.dev.thesis_management.user.mapper.StudentMapper.*;
 import static com.dev.thesis_management.user.mapper.LecturerMapper.*;
@@ -73,6 +76,21 @@ public class UserService {
 
     public User getUserById(UUID userId){
         return userRepository.findById(userId).orElseThrow();
+    }
+
+    public UserAccountResponse getCurrentUserAccount(UUID userId) {
+        User user = getUserById(userId);
+        Organization organization = user.getOrganization() != null ? user.getOrganization()
+                : user.getStudent() != null ? user.getStudent().getOrganization()
+                : user.getLecturer() != null ? user.getLecturer().getOrganization()
+                : null;
+        assert organization != null;
+        return UserAccountResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .organizationId(organization.getId())
+                .organizationCode(organization.getCode())
+                .build();
     }
 
     /* USERS */
@@ -154,6 +172,62 @@ public class UserService {
     }
 
     @Transactional
+    public List<StudentResponse> createStudents(
+            List<CreateStudentRequest> requests,
+            UUID userId
+    ) {
+
+        Organization organization = getUserById(userId).getOrganization();
+
+        if (!organization.getManager().getId().equals(userId)) {
+            throw new UnauthorizedException("You do not have permission");
+        }
+
+        List<StudentResponse> responses = new ArrayList<>();
+
+        for (CreateStudentRequest request : requests) {
+
+            Program program = programRepository
+                    .findByIdAndOrganization(request.programId(), organization)
+                    .orElseThrow(() ->
+                            new BadRequestException(
+                                    "Program not found: " + request.programId()
+                            )
+                    );
+
+            Course course = courseRepository
+                    .findByIdAndOrganization(request.courseId(), organization)
+                    .orElseThrow(() ->
+                            new BadRequestException(
+                                    "Course not found: " + request.courseId()
+                            )
+                    );
+
+            Student student = createStudentRequestToStudent(request);
+
+            student.setOrganization(organization);
+            student.setProgram(program);
+            student.setCourse(course);
+
+            User user = User.builder()
+                    .username(request.studentCode())
+                    .password(passwordEncoder.encode(request.password()))
+                    .role(UserRole.STUDENT)
+                    .enabled(true)
+                    .build();
+
+            student.setUser(user);
+            user.setStudent(student);
+
+            userRepository.save(user);
+
+            responses.add(studentToResponse(student));
+        }
+
+        return responses;
+    }
+
+    @Transactional
     public StudentResponse updateStudent(UUID studentId, UpdateStudentRequest request , UUID userId){
 
         Organization organization = getUserById(userId).getOrganization();
@@ -200,6 +274,10 @@ public class UserService {
 
         if(request.gender() != null && !request.gender().isBlank()){
             student.setGender(request.gender());
+        }
+
+        if(request.phone() != null && !request.phone().isBlank()){
+            student.setPhone(request.phone());
         }
 
         studentRepository.save(student);
@@ -358,6 +436,90 @@ public class UserService {
         userRepository.save(user);
 
         return lecturerToResponse(lecturer);
+    }
+
+    @Transactional
+    public List<LecturerResponse> createLecturers(
+            List<CreateLecturerRequest> requests,
+            UUID userId
+    ) {
+
+        Organization organization = getUserById(userId).getOrganization();
+
+        if (!organization.getManager().getId().equals(userId)) {
+            throw new UnauthorizedException("You do not have permission");
+        }
+
+        Map<UUID, College> colleges = collegeRepository
+                .findAllByOrganization(organization)
+                .stream()
+                .collect(Collectors.toMap(College::getId, c -> c));
+
+        Map<UUID, Faculty> faculties = facultyRepository
+                .findAllByOrganization(organization)
+                .stream()
+                .collect(Collectors.toMap(Faculty::getId, f -> f));
+
+        Map<UUID, Department> departments = departmentRepository
+                .findAllByOrganization(organization)
+                .stream()
+                .collect(Collectors.toMap(Department::getId, d -> d));
+
+        List<User> users = new ArrayList<>();
+
+        for (CreateLecturerRequest request : requests) {
+
+            validateRequest(request);
+
+            Lecturer lecturer = createLecturerRequestToLecturer(request);
+            lecturer.setOrganization(organization);
+
+            College college = request.collegeId() != null
+                    ? colleges.get(request.collegeId())
+                    : null;
+
+            Faculty faculty = request.facultyId() != null
+                    ? faculties.get(request.facultyId())
+                    : null;
+
+            Department department = request.departmentId() != null
+                    ? departments.get(request.departmentId())
+                    : null;
+
+            if (request.collegeId() != null && college == null)
+                throw new BadRequestException("College not found");
+
+            if (request.facultyId() != null && faculty == null)
+                throw new BadRequestException("Faculty not found");
+
+            if (request.departmentId() != null && department == null)
+                throw new BadRequestException("Department not found");
+
+            validateHierarchy(college, faculty, department);
+
+            lecturer.setCollege(college);
+            lecturer.setFaculty(faculty);
+            lecturer.setDepartment(department);
+
+            User user = User.builder()
+                    .username(request.lecturerCode())
+                    .password(passwordEncoder.encode(request.password()))
+                    .role(UserRole.LECTURER)
+                    .enabled(true)
+                    .build();
+
+            lecturer.setUser(user);
+            user.setLecturer(lecturer);
+
+            users.add(user);
+        }
+
+        List<User> savedUsers = userRepository.saveAll(users);
+
+        return savedUsers.stream()
+                .map(User::getLecturer)
+                .map(LecturerMapper::lecturerToResponse)
+                .toList();
     }
 
     @Transactional
@@ -691,5 +853,43 @@ public class UserService {
 
     private String generateOrgCode(User manager) {
         return null;
+    }
+
+    private void validateRequest(CreateLecturerRequest request) {
+
+        if (request.lecturerCode() == null || request.lecturerCode().isBlank())
+            throw new BadRequestException("Lecturer code required");
+
+        if (request.fullName() == null || request.fullName().isBlank())
+            throw new BadRequestException("Full name required");
+
+        if (request.email() == null || request.email().isBlank())
+            throw new BadRequestException("Email required");
+
+        if (request.password() == null || request.password().isBlank())
+            throw new BadRequestException("Password required");
+    }
+
+    private void validateHierarchy(
+            College college,
+            Faculty faculty,
+            Department department
+    ) {
+
+        if (college != null && faculty != null) {
+            if (!college.getFaculties().contains(faculty)) {
+                throw new ConflictException("College does not contain faculty");
+            }
+        }
+
+        if (faculty != null && department != null) {
+            if (!faculty.getDepartments().contains(department)) {
+                throw new ConflictException("Faculty does not contain department");
+            }
+        }
+
+        if (college != null && faculty == null && department != null) {
+            throw new ConflictException("Invalid organization hierarchy");
+        }
     }
 }

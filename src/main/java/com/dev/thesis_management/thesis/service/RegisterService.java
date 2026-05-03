@@ -1,5 +1,7 @@
 package com.dev.thesis_management.thesis.service;
 
+import com.dev.thesis_management.communication.entity.Notification;
+import com.dev.thesis_management.communication.service.NotificationService;
 import com.dev.thesis_management.exception.BadRequestException;
 import com.dev.thesis_management.organization.entity.Organization;
 import com.dev.thesis_management.organization.service.OrgService;
@@ -34,6 +36,7 @@ public class RegisterService {
     LecturerRepository lecturerRepository;
     SemesterRepository semesterRepository;
     MentorRegisterRepository mentorRegisterRepository;
+    NotificationService notificationService;
 
     OrgService orgService;
 
@@ -67,6 +70,14 @@ public class RegisterService {
                 .build();
 
         mentorRegisterRepository.save(register);
+
+        String studentName = student.getFullName() != null ? student.getFullName() : student.getStudentCode();
+        notificationService.notifyUser(
+                mentor.getUser(),
+                "Yêu cầu hướng dẫn mới",
+                studentName + " đã đăng ký bạn hướng dẫn trong học kỳ hiện tại.",
+                Notification.Type.STUDENT_REGISTER_MENTOR
+        );
 
         return RegisterResponse.builder()
                 .build();
@@ -128,6 +139,36 @@ public class RegisterService {
         register.setStatus(status);
 
         mentorRegisterRepository.save(register);
+
+        if (isMentor) {
+            Notification.Type type = status == MentorRegister.Status.ACCEPTED
+                    ? Notification.Type.MENTOR_APPROVE_REGISTER
+                    : Notification.Type.MENTOR_REJECT_REGISTER;
+
+            String mentorName = register.getMentor().getFullName() != null
+                    ? register.getMentor().getFullName()
+                    : register.getMentor().getLecturerCode();
+
+            notificationService.notifyUser(
+                    register.getStudent().getUser(),
+                    "Cập nhật đăng ký hướng dẫn",
+                    "Giảng viên " + mentorName + " đã " + (status == MentorRegister.Status.ACCEPTED ? "chấp nhận" : "từ chối") + " yêu cầu đăng ký của bạn.",
+                    type
+            );
+        }
+
+        if (isStudent) {
+            String studentName = register.getStudent().getFullName() != null
+                    ? register.getStudent().getFullName()
+                    : register.getStudent().getStudentCode();
+
+            notificationService.notifyUser(
+                    register.getMentor().getUser(),
+                    "Hủy đăng ký hướng dẫn",
+                    studentName + " đã hủy yêu cầu đăng ký hướng dẫn.",
+                    Notification.Type.STUDENT_CANCEL_REGISTER
+            );
+        }
 
         return RegisterMapper.toRegisterResponse(register);
     }

@@ -52,6 +52,26 @@ public class CouncilController {
         );
     }
 
+    @GetMapping("/{id}/search")
+    public ResponseEntity<ApiResponse<Page<CouncilResponse>>> searchCouncilsBySemester(
+            CouncilSearchForm form,
+            @PathVariable UUID id,
+            @PageableDefault(page = 0, size = 10) Pageable pageable,
+            Authentication authentication
+    ) {
+
+        UUID userId = getUserId(authentication);
+
+        return ok(
+                councilService.searchCouncilsBySemester(
+                        form,
+                        id,
+                        pageable,
+                        userId
+                )
+        );
+    }
+
     @GetMapping("/current/list")
     public ResponseEntity<ApiResponse<List<CouncilResponse>>> listCouncils(
             CouncilSearchForm form,

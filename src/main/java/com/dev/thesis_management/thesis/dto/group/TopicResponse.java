@@ -18,9 +18,8 @@ public class TopicResponse {
     String title;
     String description;
     Integer maxStudents;
+    Integer currentStudents;
     String status;
-
-    List<StudentResponse> students;
 
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

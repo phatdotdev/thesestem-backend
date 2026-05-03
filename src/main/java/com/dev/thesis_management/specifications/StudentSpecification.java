@@ -19,7 +19,6 @@ public class StudentSpecification {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // luôn filter theo organization
             predicates.add(
                     cb.equal(root.get("organization").get("id"), orgId)
             );
@@ -58,6 +57,12 @@ public class StudentSpecification {
             if (form.programId() != null) {
                 predicates.add(
                         cb.equal(root.get("program").get("id"), form.programId())
+                );
+            }
+
+            if(form.courseId() != null){
+                predicates.add(
+                        cb.equal(root.join("course").get("id"), form.courseId())
                 );
             }
 

@@ -1,5 +1,6 @@
 package com.dev.thesis_management.communication.service;
 
+import com.dev.thesis_management.communication.dto.ChatMessageResponse;
 import com.dev.thesis_management.communication.dto.NotificationResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -19,6 +20,25 @@ public class WebSocketSender {
                 userId.toString(),
                 "/queue/notifications",
                 notification
+        );
+    }
+
+    public void sendPrivateMessage(UUID receiverId,
+                                   ChatMessageResponse message) {
+
+        messagingTemplate.convertAndSendToUser(
+                receiverId.toString(),
+                "/queue/private",
+                message
+        );
+    }
+
+    public void sendGroupMessage(UUID groupId,
+                                 ChatMessageResponse message) {
+
+        messagingTemplate.convertAndSend(
+                "/topic/group/" + groupId,
+                message
         );
     }
 }

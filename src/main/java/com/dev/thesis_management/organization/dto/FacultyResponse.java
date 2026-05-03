@@ -1,6 +1,5 @@
 package com.dev.thesis_management.organization.dto;
 
-import com.dev.thesis_management.organization.entity.Department;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +16,6 @@ public class FacultyResponse {
     String code;
     String name;
     String description;
+    UnitResponse college;
     List<DepartmentResponse> departments;
 }

@@ -1,5 +1,8 @@
 package com.dev.thesis_management.thesis.mapper;
 
+import com.dev.thesis_management.organization.mapper.CollegeMapper;
+import com.dev.thesis_management.organization.mapper.DepartmentMapper;
+import com.dev.thesis_management.organization.mapper.FacultyMapper;
 import com.dev.thesis_management.thesis.dto.council.CouncilMemberResponse;
 import com.dev.thesis_management.thesis.dto.council.CouncilResponse;
 import com.dev.thesis_management.thesis.entity.Council;
@@ -17,6 +20,9 @@ public class CouncilMapper {
                 .members(council.getMembers()
                         .stream().map(CouncilMapper::toMemberResponse)
                         .toList())
+                .college(council.getCollege() == null ? null : CollegeMapper.collegeToResponseWithoutChildren(council.getCollege()))
+                .faculty(council.getFaculty() == null ? null : FacultyMapper.facultyToResponseWithoutChildren(council.getFaculty()))
+                .department(council.getDepartment() == null ? null : DepartmentMapper.departmentToResponseWithoutChildren(council.getDepartment()))
                 .build();
     }
 
@@ -28,6 +34,9 @@ public class CouncilMapper {
                 .members(council.getMembers()
                         .stream().map(member -> toMemberResponse(member, lecturerId))
                         .toList())
+                .college(council.getCollege() == null ? null : CollegeMapper.collegeToResponseWithoutChildren(council.getCollege()))
+                .faculty(council.getFaculty() == null ? null : FacultyMapper.facultyToResponseWithoutChildren(council.getFaculty()))
+                .department(council.getDepartment() == null ? null : DepartmentMapper.departmentToResponseWithoutChildren(council.getDepartment()))
                 .build();
     }
     public static CouncilMemberResponse toMemberResponse(CouncilMember member){

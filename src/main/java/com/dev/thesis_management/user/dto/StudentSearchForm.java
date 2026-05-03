@@ -6,6 +6,7 @@ public record StudentSearchForm(
         String name,
         String code,
         String email,
-        UUID programId
+        UUID programId,
+        UUID courseId
 ) {
 }

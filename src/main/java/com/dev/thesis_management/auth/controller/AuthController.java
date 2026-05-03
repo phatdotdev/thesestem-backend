@@ -1,11 +1,9 @@
 package com.dev.thesis_management.auth.controller;
 
-import com.dev.thesis_management.auth.dto.AuthResponse;
-import com.dev.thesis_management.auth.dto.LoginRequest;
-import com.dev.thesis_management.auth.dto.RegisterRequest;
-import com.dev.thesis_management.auth.dto.VerifyRequest;
+import com.dev.thesis_management.auth.dto.*;
 import com.dev.thesis_management.auth.service.AuthService;
 import com.dev.thesis_management.common.response.ApiResponse;
+import com.dev.thesis_management.exception.BadRequestException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import static com.dev.thesis_management.common.utils.ResponseEntityUtils.*;
 import static com.dev.thesis_management.common.utils.UUIDUtils.*;
@@ -27,18 +26,21 @@ import static com.dev.thesis_management.common.utils.UUIDUtils.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
 
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+    private static final String REFRESH_COOKIE_PATH = "/api/auth";
+
     AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody LoginRequest request){
         AuthResponse response = authService.login(request);
         ResponseCookie refreshCookie = ResponseCookie.from(
-                        "refresh_token",
+                        REFRESH_COOKIE_NAME,
                         response.getRefreshToken()
                 )
                 .httpOnly(true)
                 .secure(false)
-                .path("/api/auth")
+                .path(REFRESH_COOKIE_PATH)
                 .maxAge(Duration.ofDays(7))
                 .build();
         HttpHeaders headers = new HttpHeaders();
@@ -58,31 +60,59 @@ public class AuthController {
             HttpServletResponse response,
             Authentication authentication) {
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
+        ResponseCookie deleteCookie = ResponseCookie.from(REFRESH_COOKIE_NAME, "")
                 .httpOnly(true)
-                .secure(true)
-                .path("/auth/refresh")
+                .secure(false)
+                .path(REFRESH_COOKIE_PATH)
                 .maxAge(0)
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
-        authService.logout(parseUUID(authentication.getName()));
+        UUID userId = parseUUID(authentication.getName());
+        if (userId == null) {
+            throw new BadRequestException("Token không hợp lệ: không xác định được người dùng");
+        }
+        authService.logout(userId);
         return noContent();
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(
             @RequestBody RegisterRequest request
-            ){
+    ) {
+
         authService.register(request);
+
         return noContent();
     }
 
     @PostMapping("/verify")
     public ResponseEntity<ApiResponse> verify(
             @RequestBody VerifyRequest request
-    ){
+    ) {
+
         authService.verify(request);
+
+        return noContent();
+    }
+
+    @PostMapping("/resend")
+    public ResponseEntity<ApiResponse> resendOtp(
+            @RequestParam String email
+    ) {
+
+        authService.resendOtp(email);
+
+        return noContent();
+    }
+
+    @PostMapping("/create-org")
+    public ResponseEntity<ApiResponse> createOrganization(
+            @RequestBody CreateOrgRequest request
+    ) {
+
+        authService.createOrganization(request);
+
         return noContent();
     }
 
@@ -93,12 +123,12 @@ public class AuthController {
     ){
         AuthResponse response = authService.loginToOrg(code, request);
         ResponseCookie refreshCookie = ResponseCookie.from(
-                        "refresh_token",
+                        REFRESH_COOKIE_NAME,
                         response.getRefreshToken()
                 )
                 .httpOnly(true)
                 .secure(false)
-                .path("/api/auth")
+                .path(REFRESH_COOKIE_PATH)
                 .maxAge(Duration.ofDays(7))
                 .build();
         HttpHeaders headers = new HttpHeaders();

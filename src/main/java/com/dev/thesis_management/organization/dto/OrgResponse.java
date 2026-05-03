@@ -25,6 +25,7 @@ public class OrgResponse {
     String logoUrl;
     String coverUrl;
     String bannerUrl;
+    String role;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

@@ -17,7 +17,7 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.ResponseEntity;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -59,8 +59,8 @@ public class FacultyService {
 
     public FacultyResponse updateFaculty(UUID facultyId, UpdateFacultyRequest request, UUID userId) {
         Faculty faculty = findByFacultyId(facultyId);
-        if(hasAuthorized(faculty, userId)){
-            throw new UnauthorizedException("");
+        if(!hasAuthorized(faculty, userId)){
+            throw new UnauthorizedException("You do not have permission");
         }
         updateFacultyFromRequest(faculty, request);
         return facultyToResponse(facultyRepository.save(faculty));
@@ -75,12 +75,15 @@ public class FacultyService {
     }
 
     public FacultyResponse addDepartment(UUID facultyId, AddDepartmentRequest request, UUID userId){
+        Organization org = orgService.findByUserId(userId);
+
         Faculty faculty = findByFacultyId(facultyId);
         if(!hasAuthorized(faculty, userId)){
             throw new UnauthorizedException("You do not have permission");
         }
         Department department = addDepartmentRequestToDepartment(request);
         department.setFaculty(faculty);
+        department.setOrganization(org);
         departmentRepository.save(department);
         faculty.getDepartments().add(department);
         return facultyToResponse(faculty);
@@ -93,12 +96,21 @@ public class FacultyService {
 
     public boolean hasAuthorized(Faculty faculty, UUID userId){
         if(faculty.getOrganization() != null){
-            return faculty.getOrganization().getManager().getId().equals(userId);
+            return faculty.getOrganization()
+                    .getManager()
+                    .getId()
+                    .equals(userId);
         }
+
         if(faculty.getCollege() != null){
-            return faculty.getCollege().getOrganization().getManager().getId().equals(userId);
+            return faculty.getCollege()
+                    .getOrganization()
+                    .getManager()
+                    .getId()
+                    .equals(userId);
         }
-        return true;
+
+        return false;
     }
 
     public List<Faculty> findAllFacultiesByUser(UUID userId){
@@ -107,6 +119,6 @@ public class FacultyService {
 
     public List<FacultyResponse> getFaculties(UUID userId) {
         Organization org = orgService.findByUserId(userId);
-        return facultyRepository.findAllByOrganization(org).stream().map(FacultyMapper::facultyToResponse).toList();
+        return facultyRepository.findAllByOrganization(org).stream().map(FacultyMapper::facultyToResponseWithoutChildren).toList();
     }
 }

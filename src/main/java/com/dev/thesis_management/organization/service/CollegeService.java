@@ -35,7 +35,7 @@ public class CollegeService {
     public List<CollegeResponse> getAllColleges(UUID userId){
         return orgService.findByUserId(userId)
                 .getColleges()
-                .stream().map(CollegeMapper::collegeToResponse)
+                .stream().map(CollegeMapper::collegeToResponseWithoutChildren)
                 .toList();
     }
 

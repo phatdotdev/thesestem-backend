@@ -1,9 +1,9 @@
 package com.dev.thesis_management.thesis.dto.defense;
 
+import com.dev.thesis_management.file_asset.dto.FileAssetResponse;
 import com.dev.thesis_management.thesis.dto.council.CouncilMemberResponse;
 import com.dev.thesis_management.thesis.dto.council.CouncilResponse;
 import com.dev.thesis_management.thesis.dto.thesis.ThesisResponse;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -26,5 +26,6 @@ public class DefenseResponse {
     ThesisResponse thesis;
     CouncilResponse council;
     List<DefenseScoreResponse> scores;
+    FileAssetResponse minutesFile;
     CouncilMemberResponse member;
 }

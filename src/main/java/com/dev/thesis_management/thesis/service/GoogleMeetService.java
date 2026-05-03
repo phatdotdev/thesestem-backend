@@ -38,12 +38,12 @@ public class GoogleMeetService {
         body.put("description", request.description());
 
         body.put("start", Map.of(
-                "dateTime", request.start().toString(),
+                "dateTime", request.startAt().toString(),
                 "timeZone", "Asia/Ho_Chi_Minh"
         ));
 
         body.put("end", Map.of(
-                "dateTime", request.end().toString(),
+                "dateTime", request.endAt().toString(),
                 "timeZone", "Asia/Ho_Chi_Minh"
         ));
 

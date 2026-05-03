@@ -29,8 +29,10 @@ public class Thesis {
     @Column(name = "title_en")
     String titleEn;
 
+    @Column(columnDefinition = "TEXT")
     String description;
 
+    @Column(name = "description_en", columnDefinition = "TEXT")
     String descriptionEn;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -44,6 +46,12 @@ public class Thesis {
     // STATUS
     @Enumerated(EnumType.STRING)
     Status status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "access_level")
+    @Builder.Default
+    AccessLevel accessLevel = AccessLevel.PRIVATE;
+
     @Column(name = "progress_percent")
     Integer progressPercent = 0;
 
@@ -60,12 +68,22 @@ public class Thesis {
     @PrePersist
     public void prePersist() {
         createdAt = LocalDateTime.now();
+        if (accessLevel == null) {
+            accessLevel = AccessLevel.PRIVATE;
+        }
     }
 
     public enum Status {
         PROPOSAL,
         IN_PROGRESS,
+        APPROVED,
         SUBMITTED,
         GRADED
+    }
+
+    public enum AccessLevel {
+        PUBLIC,
+        INTERNAL,
+        PRIVATE
     }
 }

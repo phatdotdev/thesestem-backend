@@ -4,6 +4,7 @@ import com.dev.thesis_management.exception.UnauthorizedException;
 import com.dev.thesis_management.organization.dto.AddProgramRequest;
 import com.dev.thesis_management.organization.dto.ProgramResponse;
 import com.dev.thesis_management.organization.dto.UpdateProgramRequest;
+import com.dev.thesis_management.organization.dto.organization.ProgramSearchForm;
 import com.dev.thesis_management.organization.entity.Department;
 import com.dev.thesis_management.organization.entity.Faculty;
 import com.dev.thesis_management.organization.entity.Organization;
@@ -11,11 +12,10 @@ import com.dev.thesis_management.organization.entity.Program;
 import com.dev.thesis_management.organization.enums.ProgramManagedType;
 import com.dev.thesis_management.organization.mapper.ProgramMapper;
 import com.dev.thesis_management.organization.repository.ProgramRepository;
+import com.dev.thesis_management.specifications.ProgramSpecification;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -33,11 +33,11 @@ public class ProgramService {
 
     ProgramRepository programRepository;
 
-    public List<ProgramResponse> getPrograms(UUID userId
+    public List<ProgramResponse> getPrograms(ProgramSearchForm form, UUID userId
     ){
         Organization organization = orgService.findByUserId(userId);
         return programRepository
-                .findAllByOrganization(organization)
+                .findAll(ProgramSpecification.filterPrograms(form, organization.getId()))
                 .stream()
                 .map(ProgramMapper::programToResponse).toList();
     }

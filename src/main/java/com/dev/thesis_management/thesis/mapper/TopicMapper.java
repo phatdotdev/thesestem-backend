@@ -13,6 +13,7 @@ public class TopicMapper {
                 .title(topic.getTitle())
                 .description(topic.getDescription())
                 .maxStudents(topic.getMaxStudents())
+                .currentStudents(topic.getTheses() != null ? topic.getTheses().size() : 0)
                 .createdAt(topic.getCreatedAt())
                 .updatedAt(topic.getUpdatedAt())
                 .build();

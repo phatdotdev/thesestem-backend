@@ -15,6 +15,5 @@ public class DepartmentResponse {
     String code;
     String name;
     String description;
-
-
+    UnitResponse faculty;
 }

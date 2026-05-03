@@ -18,6 +18,8 @@ public class NotificationResponse {
 
     String content;
 
+    boolean read;
+
     String type;
 
     UUID userId;

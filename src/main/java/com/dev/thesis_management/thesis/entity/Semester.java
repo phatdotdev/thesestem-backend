@@ -67,6 +67,10 @@ public class Semester {
     @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Group> groups = new ArrayList<>();
 
+    // Mile List
+    @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Milestone> milestones = new ArrayList<>();
+
     // Council List => Result
 
     // Topics

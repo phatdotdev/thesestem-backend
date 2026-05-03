@@ -4,6 +4,8 @@ import com.dev.thesis_management.organization.entity.Organization;
 import com.dev.thesis_management.user.entity.Lecturer;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,4 +26,35 @@ public interface LecturerRepository extends JpaRepository<Lecturer, UUID>, JpaSp
     boolean existsByLecturerCodeAndOrganization(String code, Organization organization);
 
     boolean existsByEmailAndOrganization(String email, Organization organization);
+
+    @Query("""
+            select count(distinct l.id)
+            from Lecturer l
+            left join l.department d
+            left join l.faculty f
+            left join l.college c
+            left join d.faculty df
+            left join f.college fc
+            where l.organization.id = :organizationId
+              and (
+                    :semesterId is null
+                    or exists (
+                        select 1
+                        from Semester sem
+                        join sem.mentors mentor
+                        where sem.id = :semesterId
+                          and mentor.id = l.id
+                    )
+              )
+              and (:departmentId is null or d.id = :departmentId)
+              and (:facultyId is null or f.id = :facultyId or df.id = :facultyId)
+              and (:collegeId is null or c.id = :collegeId or fc.id = :collegeId or df.college.id = :collegeId)
+            """)
+    long countByScope(
+            @Param("organizationId") UUID organizationId,
+            @Param("semesterId") UUID semesterId,
+            @Param("collegeId") UUID collegeId,
+            @Param("facultyId") UUID facultyId,
+            @Param("departmentId") UUID departmentId
+    );
 }

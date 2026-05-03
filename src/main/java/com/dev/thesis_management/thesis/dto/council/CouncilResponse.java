@@ -1,5 +1,9 @@
 package com.dev.thesis_management.thesis.dto.council;
 
+import com.dev.thesis_management.organization.dto.CollegeResponse;
+import com.dev.thesis_management.organization.dto.DepartmentResponse;
+import com.dev.thesis_management.organization.dto.FacultyResponse;
+import com.dev.thesis_management.organization.entity.Faculty;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -16,4 +20,7 @@ public class CouncilResponse {
     String name;
     String code;
     List<CouncilMemberResponse> members;
+    CollegeResponse college;
+    FacultyResponse faculty;
+    DepartmentResponse department;
 }

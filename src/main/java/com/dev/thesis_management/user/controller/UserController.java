@@ -32,6 +32,12 @@ public class UserController {
 
     UserService userService;
 
+    /* USER */
+    @GetMapping("/account")
+    public ResponseEntity<ApiResponse<UserAccountResponse>> getCurrentUser(Authentication authentication) {
+        return ok(userService.getCurrentUserAccount(parseUUID(authentication.getName())));
+    }
+
     /* STUDENT */
 
     @GetMapping("/students")
@@ -44,6 +50,19 @@ public class UserController {
             Authentication authentication,
             @RequestBody CreateStudentRequest request) {
         return created(userService.createStudent(request, parseUUID(authentication.getName())));
+    }
+
+    @PostMapping("/students/bulk")
+    public ResponseEntity<ApiResponse<List<StudentResponse>>> createStudents(
+            Authentication authentication,
+            @RequestBody List<CreateStudentRequest> requests) {
+
+        return created(
+                userService.createStudents(
+                        requests,
+                        parseUUID(authentication.getName())
+                )
+        );
     }
 
     @PutMapping("/students/{id}")
@@ -119,6 +138,19 @@ public class UserController {
             @RequestBody CreateLecturerRequest request
     ){
         return created(userService.createLecturer(request, parseUUID(authentication.getName())));
+    }
+
+    @PostMapping("/lecturers/bulk")
+    public ResponseEntity<ApiResponse<List<LecturerResponse>>> createLecturers(
+            Authentication authentication,
+            @RequestBody List<CreateLecturerRequest> requests) {
+
+        return created(
+                userService.createLecturers(
+                        requests,
+                        parseUUID(authentication.getName())
+                )
+        );
     }
 
     @PutMapping("/lecturers/{id}")

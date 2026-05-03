@@ -1,5 +1,6 @@
 package com.dev.thesis_management.thesis.entity;
 
+import com.dev.thesis_management.file_asset.entity.FileAsset;
 import com.dev.thesis_management.user.entity.Student;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,6 +37,10 @@ public class ThesisDefense {
     LocalDateTime defenseTime;
 
     String location;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "minutes_file_id")
+    FileAsset minutesFile;
 
     @OneToMany(
             mappedBy = "defense",

@@ -12,4 +12,5 @@ public class RegisterInfo {
     String email;
     String password;
     String code;
+    boolean verified;
 }

@@ -3,11 +3,14 @@ package com.dev.thesis_management.organization.controller;
 import com.dev.thesis_management.common.response.ApiResponse;
 import com.dev.thesis_management.organization.dto.StructureResponse;
 import com.dev.thesis_management.organization.dto.UpdateOrgRequest;
+import com.dev.thesis_management.organization.dto.organization.OrganizationSearchForm;
 import com.dev.thesis_management.organization.service.OrgService;
 import com.dev.thesis_management.organization.dto.OrgResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +32,14 @@ public class OrgController {
             Authentication authentication
             ){
         return ok(orgService.getCurrentOrg(parseUUID(authentication.getName())));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<OrgResponse>>> searchOrgs(
+            OrganizationSearchForm form,
+            Pageable pageable
+    ){
+        return ok(orgService.searchOrganization(form, pageable));
     }
 
     @GetMapping("/search/{code}")

@@ -71,7 +71,7 @@ public class DepartmentService {
     public List<DepartmentResponse> getDepartments(UUID userId) {
         Organization organization = orgService.findByUserId(userId);
         return departmentRepository.findAllByOrganization(organization)
-                .stream().map(DepartmentMapper::toDepartmentResponse)
+                .stream().map(DepartmentMapper::departmentToResponseWithoutChildren)
                 .toList();
     }
 }
